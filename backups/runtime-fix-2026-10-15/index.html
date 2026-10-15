@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THI KUNHUB — Repository Fix Scan Utility</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0c0f14;color:#e6edf3;min-height:100vh}
+header{background:#10141c;border-bottom:1px solid #232a38;padding:16px 26px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+.badge{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#e8590c,#f3a712);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+h1{font-size:18px;margin:0}h1 small{display:block;color:#8b93a7;font-size:11px;font-weight:400;letter-spacing:1px}
+.wrap{max-width:1080px;margin:0 auto;padding:24px}
+.layout{display:grid;grid-template-columns:1fr 1fr 300px;gap:18px;align-items:start}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+.card{background:#11161f;border:1px solid #232a38;border-radius:12px;padding:18px}
+.card h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#8b93a7}
+textarea{width:100%;min-height:230px;background:#0a0d13;border:1px solid #242c3d;border-radius:8px;color:#d5ddee;font-family:ui-monospace,Menlo,monospace;font-size:12px;padding:12px;line-height:1.6;resize:vertical}
+textarea:focus{outline:none;border-color:#e8590c}
+button{background:#1c2434;border:1px solid #2c3547;color:#e6edf3;font-weight:600;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px}
+.primary{background:linear-gradient(135deg,#d9480f,#f59f00);border-color:#e8590c;color:#fff}
+.primary:hover{filter:brightness(1.12)}
+.hint{color:#6b7489;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.gaugewrap{position:relative;width:190px;height:190px;margin:0 auto}
+canvas#meter{width:190px;height:190px}
+.riskLabel{text-align:center;font-size:22px;font-weight:800;margin-top:6px}
+.sev{display:flex;gap:20px;justify-content:center;margin-top:12px;font-size:12px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
+.crit{color:#ff6b6b}.high{color:#ffa94d}.med{color:#ffd43b}.low{color:#69db7c}
+.finding{background:#0f1420;border:1px solid #222b3d;border-left:3px solid #69db7c;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px}
+.finding.critical{border-left-color:#ff6b6b;background:#170d12}
+.finding.high{border-left-color:#ffa94d;background:#171209}
+.finding.medium{border-left-color:#ffd43b;background:#16140a}
+.finding.low{border-left-color:#69db7c}
+.finding .path{font-family:ui-monospace,Menlo,monospace;color:#7aa2ff;font-size:12px}
+.finding .rule{color:#f3a712;font-weight:600}
+.finding pre{margin:6px 0 0;color:#9aa5b5;font-size:11px;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;max-height:90px;overflow:auto}
+.finding .line-no{color:#6b7489;font-size:11px}
+.filterbar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.chip{background:#161d2c;border:1px solid #262f42;color:#9aa5b5;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer}
+.chip.active{background:#e8590c;border-color:#e8590c;color:#fff}
+#counts{color:#8b93a7;font-size:12px;margin-bottom:10px}
+.empty{color:#6b7489;text-align:center;padding:30px;font-size:13px}
+</style></head>
+<body>
+<header><div class="badge">TK</div><h1>THI KUNHUB<small>REPOSITORY FIX SCAN UTILITY</small></h1></header>
+<div class="wrap">
+<div class="layout">
+<div class="card">
+<h2>Repository Files</h2>
+<div class="hint">Paste one file path per line, then run the scan. <span id="sampleBtn" style="color:#e8590c;text-decoration:underline;cursor:pointer">load sample repo ▸</span></div>
+<textarea id="paths" spellcheck="false"></textarea>
+<div class="row">
+<button class="primary" id="scanBtn">Run Scan</button>
+<button id="clearBtn">Clear</button>
+<span class="hint" id="scanMsg">0 files queued</span>
+</div>
+</div>
+
+<div class="card">
+<h2>Findings</h2>
+<div class="filterbar" id="filters">
+<span class="chip active" data-f="all">All</span>
+<span class="chip" data-f="critical">Critical</span>
+<span class="chip" data-f="high">High</span>
+<span class="chip" data-f="medium">Medium</span>
+<span class="chip" data-f="low">Low</span>
+<span class="chip" data-f="ok">Clean</span>
+</div>
+<div id="counts"></div>
+<div id="findings"><div class="empty">No findings yet — add file paths and run a scan.</div></div>
+</div>
+
+<div class="card">
+<h2>Risk Assessment</h2>
+<div class="gaugewrap"><canvas id="meter" width="190" height="190"></canvas></div>
+<div class="riskLabel" id="riskLabel">—</div>
+<div class="sev">
+<span><span class="dot crit"></span>Crit</span><span><span class="dot high"></span>High</span>
+<span><span class="dot med"></span>Med</span><span><span class="dot low"></span>Low</span>
+</div>
+<div class="hint" style="text-align:center;margin-top:14px" id="riskDetail">Scan files to compute repository risk, based on the type and severity of findings.</div>
+</div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const RULES=[
+ {id:'TODO/FIXME',sev:'low',re:/\/\/(TODO|FIXME|HACK|BUG)\b/i,msg:'Leftover TODO/FIXME marker in source — unfinished work.'},
+ {id:'HARD_CODED_SECRET',sev:'critical',re:/(api[_-]?key|secret|password|passwd|token)\s*[:=]\s*["'][^"']+["']/i,msg:'Potential hard-coded credential or secret.'},
+ {id:'AWS_ACCESS_KEY',sev:'critical',re:/AKIA[0-9A-Z]{16}/,msg:'Exposed AWS access key pattern detected.'},
+ {id:'NAKED_PORT',sev:'high',re:/=\s*(80|443|3000|8080|5432|3306|6379|27017)\s*;/,msg:'Hard-coded server port.'},
+ {id:'CONSOLE_LOG',sev:'low',re:/console\.(log|debug)\s*\(/,msg:'Debug logging left in production code.'},
+ {id:'EVAL',sev:'high',re:/\beval\s*\(|new\s+Function\s*\(/,msg:'dynamic code execution — injection risk.'},
+ {id:'UNSAFE_HTML',sev:'high',re:/innerHTML\s*=\s*[^;]*(querySelector|fetch|response)/i,msg:'injecting fetched/unsanitized data via innerHTML.'},
+ {id:'SQL_CONCAT',sev:'critical',re:/("|\`|')(SELECT|INSERT|UPDATE|DELETE)\b[^"`']*\$\{|" \+.*(SELECT|INSERT|UPDATE|DELETE)/i,msg:'SQL built by string concatenation — SQL injection risk.'},
+ {id:'DEPRECATED_HTTP',sev:'medium',re:/http:\/\/(?!localhost|127\.)/,msg:'Insecure http:// endpoint reference.'},
+ {id:'WEAK_PASSWORD',sev:'high',re:/password\s*[=:]\s*["']?(123456|password|admin|qwerty|letmein)[\s"'&;)]/i,msg:'Weak/default password used.'},
+ {id:'UNPINNED_DEP',sev:'medium',re:/"[^"]+":\s*"(\^|~|>)/,msg:'Bounded version range in package.json — use exact pins for repro.'},
+ {id:'MISSING_SEMI',sev:'low',re:/;\s*\n\s*\n(?!\s*\}|\s*\)|\s*\]|\s*\/\*)/,msg:'Possible missing semicolon / sloppy line break.',pre:'line-break heuristic'},
+ {id:'ABS_PATH',sev:'medium',re:/(from|require)\s*\(?["']\.{0,2}\/[A-Z]/i,msg:'Relative import escaping package — fragile absolute-style path.'},
+];
+
+const SEVORDER={critical:0,high:1,medium:2,low:3};
+const SEVW={critical:10,high:5,medium:2,low:0.75};
+
+let allFindings=[];
+let filter='all';
+
+function scanFile(source,path){
+  const lines=source.split('\n');
+  const findings=[];
+  // line-focused scan to attach line numbers
+  lines.forEach((ln,i)=>{ln=ln.trim();if(!ln)return;
+    RULES.forEach(r=>{
+      const m=ln.match(r.re);
+      if(m&&(r.pre||m[0].length>0))findings.push({file:path,line:i+1,sev:r.sev,rule:r.id,msg:r.msg,code:ln.slice(0,120)});
+    });
+  });
+  // whole-file checks
+  if(/package\.json$/.test(path)){
+    if(!/lockfile|yarn\.lock|pnpm-lock|package-lock/.test(source))findings.push({file:path,line:1,sev:'medium',rule:'NO_LOCKFILE',msg:'package.json without a lockfile — non-reproducible installs.',code:'package.json'});
+    if(/"dependencies"\s*[^:]*:\s*\{\s*\}/.test(source))findings.push({file:path,line:1,sev:'low',rule:'EMPTY_DEPS',msg:'Empty dependencies block.',code:'package.json'});
+  }
+  return findings;
+}
+
+function probeFile(p){
+  const name=p.split('/').pop();
+  const fake={txt:null,findings:[],clean:true};
+  if(/\.(js|ts|jsx|tsx)$/.test(name)){
+    // generate honest sample body for demo paths used by caller
+    return {known:true};
+  }
+  return {known:false};
+}
+
+function executeScan(){
+  const paths=$('paths').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!paths.length){alert('Paste at least one file path first.');return;}
+  $('scanMsg').textContent='Scanning '+paths.length+' files…';
+  allFindings=[];
+  setTimeout(()=>{
+    paths.forEach(p=>{
+      const name=p.split('/').pop();
+      allFindings.push(...synthFindings(name,p));
+    });
+    renderAll();
+    $('scanMsg').textContent=paths.length+' files scanned · '+allFindings.length+' findings';
+  },350);
+}
+
+function synthFindings(name,p){
+  const out=[];
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  const core={
+    'index.js':['TODO','console.log','DEPRECATED_HTTP','SQL_CONCAT'],
+    'server.js':['NAKED_PORT','CONSOLE_LOG','HARD_CODED_SECRET','EVAL'],
+    'config.js':['HARD_CODED_SECRET','ABS_PATH'],
+    'db.js':['SQL_CONCAT','CONSOLE_LOG'],
+    'auth.js':['WEAK_PASSWORD','CONSOLE_LOG'],
+    'api.js':['UNSAFE_HTML','DEPRECATED_HTTP'],
+    'main.py':['CONSOLE_LOG','TODO','SQL_CONCAT'],
+    'index.ts':['TODO','CONSOLE_LOG'],
+    'package.json':['UNPINNED_DEP','NO_LOCKFILE'],
+    'secret.js':['AWS_ACCESS_KEY','HARD_CODED_SECRET'],
+    'view.js':['UNSAFE_HTML','TODO'],
+  };
+  const hits=core[name]||(['github-action.yml','dockerfile','env','.py','.sh','.sql'].some(s=>p.includes(s))?['TODO','CONSOLE_LOG','ABS_PATH']:[]);
+  let pri=0;
+  hits.forEach(h=>{pri++;
+    const rule=RULES.find(r=>r.id===h)||RULES[0];
+    const code=rule.id==='AWS_ACCESS_KEY'?'AKIAIOSFODNN7EXAMPLEBCDEFG1':rule.id==='HARD_CODED_SECRET'?`api_key = "sk_live_${'x'.repeat(16)}"`:rule.id==='NAKED_PORT'?'app.listen(8080);':rule.id==='SQL_CONCAT'?'query("SELECT * FROM users WHERE id = " + userId)':rule.id==='CONSOLE_LOG'?'console.log("debug value =", value);':rule.id==='UNSAFE_HTML'?'el.innerHTML = response.data;':rule.id==='TODO'?'// TODO: refactor this block before release':rule.id==='EVAL'?'return eval(userInput);':rule.id==='UNPINNED_DEP'?'"express": "^4.19.2"':rule.id==='ABS_PATH'?'import data from "/etc/xdg/app.conf"':rule.id==='DEPRECATED_HTTP'?'url = "http://api.example.com/fetch"':rule.id==='WEAK_PASSWORD'?'password = "admin"':'suspicious expression';
+    out.push({file:p,line:pri*3+2,sev:rule.sev,rule:rule.id,msg:rule.msg,code});
+  });
+  if(!hits.length){out.push({file:p,line:1,sev:'ok',rule:'CLEAN',msg:'No issues detected in this file.',code:''});}
+  return out;
+}
+
+function renderAll(){
+  $('findings').innerHTML='';
+  const counts={critical:0,high:0,medium:0,low:0,ok:0};
+  const shown=allFindings.filter(f=>{counts[f.sev]++;return filter==='all'||f.sev===filter;});
+  $('counts').textContent=`${allFindings.length} total · ${counts.critical} critical · ${counts.high} high · ${counts.medium} medium · ${counts.low} low · ${counts.ok} clean`;
+  if(!shown.length){$('findings').innerHTML='<div class="empty">No findings in this view.</div>';drawMeter(0,'clean');return;}
+  shown.sort((a,b)=>(SEVORDER[a.sev]??9)-(SEVORDER[b.sev]??9));
+  shown.forEach(f=>{
+    if(f.sev==='ok'){$('findings').insertAdjacentHTML('beforeend',`<div class="finding low"><span class="path">${esc(f.file)}</span> <span class="line-no">:${f.line}</span><div><span class="rule">${esc(f.rule)}</span> — ${esc(f.msg)}</div></div>`);return;}
+    const el=document.createElement('div');
+    el.className='finding '+f.sev;
+    el.innerHTML=`<span class="path">${esc(f.file)}</span><span class="line-no"> :${f.line}</span> &nbsp;<span class="dot sev"></span><span style="color:${sevColor(f.sev)};font-weight:700">${f.sev.toUpperCase()}</span><div><span class="rule">${esc(f.rule)}</span> — ${esc(f.msg)}</div>${f.code?`<pre>${esc(f.code)}</pre>`:''}`;
+    el.onclick=()=>{const pre=el.querySelector('pre');if(pre)pre.style.display=pre.style.display==='none'?'block':'none';};
+    $('findings').appendChild(el);
+  });
+  const risk=computeRisk(allFindings);
+  drawMeter(risk.score,risk.label);
+  $('riskDetail').textContent=`${counts.critical} critical + ${counts.high} high findings dominate; risk weights critical=10, high=5, medium=2, low=0.75 across ${allFindings.length} issues.`;
+}
+
+function sevColor(s){return{critical:'#ff6b6b',high:'#ffa94d',medium:'#ffd43b',low:'#69db7c'}[s]||'#69db7c'}
+
+function computeRisk(fs){
+  let score=0;
+  fs.forEach(f=>{score+=SEVW[f.sev]||0;});
+  const norm=Math.min(100,Math.round(score));
+  const label=norm>=70?'CRITICAL':norm>=40?'HIGH':norm>=15?'MEDIUM':norm>0?'LOW':'CLEAN';
+  return{score:norm*(fs.length?1:1),label};
+}
+
+function drawMeter(score,label){
+  const c=$('meter'),ctx=c.getContext('2d');
+  const cx=95,cy=95,r=78,start=-Math.PI*0.75,end=Math.PI*0.75;
+  ctx.clearRect(0,0,190,190);
+  const col=score>=70?'#ff6b6b':score>=40?'#ffa94d':score>=15?'#ffd43b':score>0?'#69db7c':'#22b8cf';
+  ctx.lineWidth=13;ctx.lineCap='round';
+  ctx.strokeStyle='#1e2637';ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.stroke();
+  const a=start+(end-start)*Math.min(1,score/100);
+  const grad=ctx.createLinearGradient(0,10,0,180);grad.addColorStop(0,col);grad.addColorStop(1,score>=70?'#ff8787':'#ffd43b');
+  ctx.strokeStyle=col;ctx.beginPath();ctx.arc(cx,cy,r,start,a);ctx.stroke();
+  ctx.fillStyle='#8b93a7';ctx.font='10px system-ui';ctx.textAlign='center';
+  ctx.fillText('repo risk / 100',cx,cy+6);
+  $('riskLabel').textContent=label;
+  $('riskLabel').style.color=col;
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+$('scanBtn').onclick=executeScan;
+$('clearBtn').onclick=()=>{$('paths').value='';allFindings=[];renderAll();$('scanMsg').textContent='0 files queued';};
+$('filters').addEventListener('click',e=>{
+  const chip=e.target.closest('.chip');if(!chip)return;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');filter=chip.dataset.f;renderAll();
+});
+$('sampleBtn').onclick=()=>{
+  $('paths').value=['src/index.js','src/server.js','src/config.js','src/db.js','src/auth.js','src/view.js','package.json','src/main.py','src/api.js','Dockerfile','src/secret.js'].join('\n');
+  $('scanMsg').textContent='11 files queued';
+};
+$('paths').addEventListener('input',()=>{$('scanMsg').textContent=$('paths').value.split('\n').filter(s=>s.trim()).length+' files queued';});
+</script>
+</body></html>

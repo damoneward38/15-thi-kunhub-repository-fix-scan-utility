@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>THI KUNHUB — Repository Fix Scan Utility</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}
@@ -46,10 +46,11 @@ canvas#meter{width:190px;height:190px}
 <div class="layout">
 <div class="card">
 <h2>Repository Files</h2>
+<div class="hint" role="note">DEMO MODE: this static page does not open or read local repository files. Findings are illustrative samples, not a security scan.</div>
 <div class="hint">Paste one file path per line, then run the scan. <span id="sampleBtn" style="color:#e8590c;text-decoration:underline;cursor:pointer">load sample repo ▸</span></div>
 <textarea id="paths" spellcheck="false"></textarea>
 <div class="row">
-<button class="primary" id="scanBtn">Run Scan</button>
+<button class="primary" id="scanBtn">Run Demo Scan</button>
 <button id="clearBtn">Clear</button>
 <span class="hint" id="scanMsg">0 files queued</span>
 </div>
@@ -145,7 +146,7 @@ function executeScan(){
       allFindings.push(...synthFindings(name,p));
     });
     renderAll();
-    $('scanMsg').textContent=paths.length+' files scanned · '+allFindings.length+' findings';
+    $('scanMsg').textContent='DEMO ONLY · '+paths.length+' path labels · '+allFindings.length+' illustrative findings';
   },350);
 }
 
